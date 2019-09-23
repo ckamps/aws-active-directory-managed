@@ -171,6 +171,6 @@ Outputs:
         - \admin
     Description: Domain administrator account
   
-  rAdSecretsArn:
+  oAdSecretsArn:
     Value: !Ref rAdAdminSecrets
     Description: Managed AD Admin Secrets
