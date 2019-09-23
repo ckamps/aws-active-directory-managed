@@ -1,13 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  This template creates a managed Microsoft AD Directory Service into private
-  subnets in separate Availability Zones inside a VPC. The default Domain
-  Administrator user is 'admin'. For adding members to the domain, ensure that
-  they are launched into the domain member security group created by this
-  template and then configure them to use the AD instances fixed private IP
-  addresses as the DNS server. **WARNING** This template creates Amazon EC2
-  Windows instance and related resources. You will be billed for the AWS
-  resources used if you create a stack from this template. QS(0021)
+  This template creates a managed Microsoft AD Directory Service within an AWS managed VPC
+  along with Elastic Network Interfaces (ENIs) in private subnets within separate 
+  Availability Zones (AZs) inside the specified VPC. The default Domain Administrator user is 'admin'.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -85,15 +80,15 @@ Parameters:
     Type: String
 
   pPrivateSubnet1Id:
-    Description: 'ID of the private subnet 1 in Availability Zone 1 (e.g., subnet-a0246dcd)'
+    Description: 'ID of the private subnet 1 in Availability Zone 1'
     Type: AWS::EC2::Subnet::Id
 
   pPrivateSubnet2Id:
-    Description: 'ID of the private subnet 2 in Availability Zone 2 (e.g., subnet-a0246dcd)'
+    Description: 'ID of the private subnet 2 in Availability Zone 2'
     Type: AWS::EC2::Subnet::Id
 
   pVpcId:
-    Description: 'ID of the VPC (e.g., vpc-0343606e)'
+    Description: 'ID of the VPC'
     Type: AWS::EC2::VPC::Id
 
 Rules:
