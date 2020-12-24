@@ -18,12 +18,12 @@ Metadata:
         Parameters:
           - pDomainDnsName
           - pDomainNetBiosName
-          - pDomainAdminPassword
+          - pDomainAdminPasswordSecretName
           - pAdEdition
 
     ParameterLabels:
-      pDomainAdminPassword:
-        default: Domain Admin Password
+      pDomainAdminPasswordSecretName:
+        default: Name of secret in AWS Secrets Manager for domain admin password
       pDomainDnsName:
         default: Domain DNS Name
       pDomainNetBiosName:
@@ -38,16 +38,10 @@ Metadata:
         default: VPC ID
 
 Parameters:
-  pDomainAdminPassword:
-    Description: >-
-      Password for the domain admin user. Must be at least 8 characters
-      containing letters, numbers and symbols
+  pDomainAdminPasswordSecretName:
+    Description: Name of secret in AWS Secrets Manager for the domain admin user. The password must be stored in a key named `password`.
     Type: String
-    MinLength: 8
-    MaxLength: 32
-    AllowedPattern: >-
-      (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
-    NoEcho: 'true'
+    Default: ''
 
   pDomainDnsName:
     Description: >-
@@ -64,7 +58,7 @@ Parameters:
       NetBIOS name of the domain (upto 15 characters) for users of earlier
       versions of Windows e.g. EXAMPLE
     Type: String
-    Default: example
+    Default: EXAMPLE
     MinLength: '1'
     MaxLength: '15'
     AllowedPattern: '[a-zA-Z0-9\-]+'
@@ -91,6 +85,12 @@ Parameters:
     Description: 'ID of the VPC'
     Type: AWS::EC2::VPC::Id
 
+  pCreateVpcDhcpOptions:
+    Description: Create VPC DHCP Options (true | false)
+    Type: String
+    Default: false
+    AllowedValues: [true, false]
+
 Rules:
   SubnetsInVPC:
     Assertions:
@@ -102,9 +102,13 @@ Rules:
             - 'Fn::RefAll': 'AWS::EC2::VPC::Id'
         AssertDescription: All subnets must in the VPC
 
+Conditions:
+  cCreateVpcDhcpOptions: !Equals [ !Ref 'pCreateVpcDhcpOptions', 'true' ]
+
 Resources:
   rDhcpOptions:
     Type: AWS::EC2::DHCPOptions
+    Condition: cCreateVpcDhcpOptions
     Properties:
       DomainName: !Ref pDomainDnsName
       DomainNameServers: !GetAtt rMicrosoftAd.DnsIpAddresses
@@ -114,16 +118,10 @@ Resources:
 
   rVpcDhcpOptionsAssociation:
     Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Condition: cCreateVpcDhcpOptions
     Properties:
       VpcId: !Ref pVpcId
       DhcpOptionsId: !Ref rDhcpOptions
-
-  rAdAdminSecrets:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub 'ADAdminSecret-${AWS::StackName}'
-      Description: Admin User Seccrets for Manged AD Quick Start
-      SecretString: !Sub '{"username":"Admin","password":"${pDomainAdminPassword}"}'
 
   rMicrosoftAd:
     Type: AWS::DirectoryService::MicrosoftAD
@@ -131,7 +129,7 @@ Resources:
       Name: !Ref pDomainDnsName
       Edition: !Ref pAdEdition
       ShortName: !Ref pDomainNetBiosName
-      Password: !Ref pDomainAdminPassword
+      Password: !Sub '{{resolve:secretsmanager:${pDomainAdminPasswordSecretName}:SecretString:password}}'
       VpcSettings:
         SubnetIds:
           - !Ref pPrivateSubnet1Id
@@ -165,7 +163,3 @@ Outputs:
       - - !Ref pDomainNetBiosName
         - \admin
     Description: Domain administrator account
-  
-  oAdSecretsArn:
-    Value: !Ref rAdAdminSecrets
-    Description: Managed AD Admin Secrets
